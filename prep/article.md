@@ -20,40 +20,39 @@ Think LEGO, not concrete.
 
 ## The catch
 
-Many small parts must be put together. Which ones do you need? What does each depend on? What settings and keys? In what order do they start?
+Many small parts must be put together. Which ones do you need? What settings and secret keys does each one want? How do you create the first admin, the first app, the first API key? How do you know it all works?
 
-Doing this by hand takes days. So composable parts need a good way to assemble them.
+Done by hand, this takes hours or days, for every module and every developer.
 
-## Why DPDP compliance fits
+## The TSI building blocks
 
-The DPDP Act needs a few clear jobs: consent, protecting personal data, signatures, secure data exchange, and proof. Some companies need all of them. Others need two.
-
-You don't need one giant platform. You need the right blocks.
-
-## Introducing tsi compose
-
-The TSI Coop offers each job as a separate backend service:
+TSI Coop already offers its products as separate services. Each one runs on its own, with its own database, and talks to your apps through an API:
 
 | Block | Job |
 |---|---|
-| **tsi-dpdp-cms** | Consent records |
-| **tsi-privacy-vault** | Keeps personal data safe |
-| **tsi-sign** | eSign documents |
-| **tsi-dx-node** | Secure data exchange |
-| **tsi-compass** | Compliance evidence |
+| **tsi-dpdp-cms** | Records and checks consent |
+| **tsi-privacy-vault** | Stores personal data safely, with erasure and audit |
+| **tsi-ledger** | Double-entry accounting records with an audit trail |
+| **tsi-compass** | IT governance, risk and compliance work |
+| **tsi-dx-node** | Secure data exchange between organisations |
+| **tsi-sign** | Seals documents and collects eSignatures |
 
-They have no screens. They plug into your own apps and keep your login and gateway as they are.
+They have no dependency on each other. Pick one, or pick three.
 
-**tsi compose** assembles them for you:
+## Introducing tsi compose
+
+**tsi compose** is the command that does the assembling for you. One tool, the same steps, for every block:
 
 ```
-tsi compose init     # pick your blocks
-tsi compose up -d    # start them
-tsi compose status   # check they work
-tsi compose down     # clean up
+tsi compose init       # pick your blocks
+tsi compose up -d      # start them, set them up
+tsi compose test       # check they really work
+tsi compose down       # clean up
 ```
 
-It adds the dependencies, creates the setup files, and generates strong keys. Your secrets stay on your machine.
+It creates strong secret keys. It prepares each database. It creates the first admin, the first app and the first API key, using each product's own API. Then it runs quick tests with those keys.
+
+Your secrets stay on your machine.
 
 ## In short
 
