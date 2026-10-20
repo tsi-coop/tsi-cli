@@ -25,6 +25,11 @@ const (
 	External DBMode = "external"
 )
 
+// DefaultPortOffset is added to every module's upstream host port in a new project, so a
+// stack made by tsi does not collide with modules run straight from their own repositories
+// (8080-8088 for apps, 5432-5440 for databases). Set port_offset: 0 to use the upstream ports.
+const DefaultPortOffset = 300
+
 // FileName is the default config file.
 const FileName = "tsi.yaml"
 
@@ -34,8 +39,9 @@ type Config struct {
 	Project  string   `yaml:"project"`
 	Modules  []string `yaml:"modules"`
 	Database Database `yaml:"database"`
-	// PortOffset is added to every default host port.
-	PortOffset int `yaml:"port_offset,omitempty"`
+	// PortOffset is added to every default host port. It is always written, because a missing
+	// value means DefaultPortOffset, so an explicit 0 has to be kept.
+	PortOffset int `yaml:"port_offset"`
 	// Bind is the host address ports are published on. Default 127.0.0.1.
 	Bind string `yaml:"bind,omitempty"`
 	// Overrides sets module environment values: module -> NAME -> value.
@@ -95,12 +101,13 @@ var emailRe = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 // Default returns a config with sensible defaults for the given modules.
 func Default(modules ...string) *Config {
 	return &Config{
-		Version:  1,
-		Project:  "tsi",
-		Modules:  modules,
-		Database: Database{Mode: Shared, Port: 5432},
-		Bind:     "127.0.0.1",
-		Admin:    Admin{Name: "Administrator", Email: "admin@example.org"},
+		Version:    1,
+		Project:    "tsi",
+		Modules:    modules,
+		Database:   Database{Mode: Shared, Port: 5432},
+		Bind:       "127.0.0.1",
+		PortOffset: DefaultPortOffset,
+		Admin:      Admin{Name: "Administrator", Email: "admin@example.org"},
 	}
 }
 
@@ -176,7 +183,9 @@ func Load(path string) (*Config, error) {
 		}
 		return nil, err
 	}
-	var c Config
+	// Start from the defaults: a key that is absent from the file keeps its default, so a
+	// tsi.yaml without port_offset gets the default offset rather than the upstream ports.
+	c := Config{PortOffset: DefaultPortOffset}
 	dec := yaml.NewDecoder(bytesReader(b))
 	dec.KnownFields(true)
 	if err := dec.Decode(&c); err != nil {

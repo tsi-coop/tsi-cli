@@ -56,6 +56,9 @@ ready:
     setup_token: tsi-readiness-probe
   expect: [401]
 
+# A policy document / schema a user supplies replaces the default instead of merging into it.
+spec_replace: [contract.schema, contract.governance_rules, sample]
+
 spec_defaults:
   contract:
     name: TSI sample exchange

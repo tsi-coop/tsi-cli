@@ -57,8 +57,11 @@ type Module struct {
 	MinPasswordLen int `yaml:"min_password_len"`
 	// SpecDefaults seeds the per-module bootstrap spec.
 	SpecDefaults map[string]any `yaml:"spec_defaults"`
-	Bootstrap    []Step         `yaml:"bootstrap"`
-	Smoke        []SmokeTest    `yaml:"smoke"`
+	// SpecReplace lists dotted spec paths whose map values a user replaces wholesale instead of
+	// merging into the default (a policy document, a JSON schema).
+	SpecReplace []string    `yaml:"spec_replace"`
+	Bootstrap   []Step      `yaml:"bootstrap"`
+	Smoke       []SmokeTest `yaml:"smoke"`
 }
 
 // Image is a pinned container image.

@@ -61,6 +61,9 @@ ready:
   body: {_func: list_active_fiduciaries}
   expect: [200]
 
+# A policy document / schema a user supplies replaces the default instead of merging into it.
+spec_replace: [policy.content]
+
 spec_defaults:
   fiduciary:
     name: Default Fiduciary

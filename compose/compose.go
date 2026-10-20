@@ -565,7 +565,7 @@ func (s *Stack) runner(m *render.Module, st *secrets.State) (*bootstrap.Runner, 
 	for _, kv := range m.Env {
 		env[kv.Key] = kv.Value
 	}
-	spec := mergeSpec(m.Mod.SpecDefaults, firstSpec(s.Cfg.Bootstrap, m.Key, m.Mod.Name))
+	spec := mergeSpec(m.Mod.SpecDefaults, firstSpec(s.Cfg.Bootstrap, m.Key, m.Mod.Name), m.Mod.SpecReplace)
 	return &bootstrap.Runner{
 		Module: m.Mod, Key: m.Key, BaseURL: m.BaseURL(s.Cfg.Bind), Env: env,
 		Admin: bootstrap.Admin{Name: s.Cfg.Admin.Name, Email: s.Cfg.Admin.Email, Password: ms.AdminPassword},
@@ -692,16 +692,29 @@ func firstSpec(all map[string]map[string]any, keys ...string) map[string]any {
 	return nil
 }
 
-// mergeSpec overlays user values on the catalog defaults, merging nested maps.
-func mergeSpec(base, over map[string]any) map[string]any {
+// mergeSpec overlays user values on the catalog defaults, merging nested maps one level at a
+// time. A list, or a map at a path in replace, is replaced wholesale.
+func mergeSpec(base, over map[string]any, replace []string) map[string]any {
+	set := map[string]bool{}
+	for _, r := range replace {
+		set[r] = true
+	}
+	return mergeAt(base, over, "", set)
+}
+
+func mergeAt(base, over map[string]any, prefix string, replace map[string]bool) map[string]any {
 	out := map[string]any{}
 	for k, v := range base {
 		out[k] = v
 	}
 	for k, v := range over {
-		if bm, ok := out[k].(map[string]any); ok {
+		path := k
+		if prefix != "" {
+			path = prefix + "." + k
+		}
+		if bm, ok := out[k].(map[string]any); ok && !replace[path] {
 			if om, ok := v.(map[string]any); ok {
-				out[k] = mergeSpec(bm, om)
+				out[k] = mergeAt(bm, om, path, replace)
 				continue
 			}
 		}

@@ -83,7 +83,7 @@ func newModules(g *globals) *cobra.Command {
 			var rows []row
 			for _, n := range cat.Names() {
 				m, _ := cat.Get(n)
-				rows = append(rows, row{n, m.Purpose, m.Image.Ref(), m.Ports.App})
+				rows = append(rows, row{n, m.Purpose, m.Image.Ref(), m.Ports.App + config.DefaultPortOffset})
 			}
 			if g.json() {
 				return printJSON(cmd.OutOrStdout(), rows)

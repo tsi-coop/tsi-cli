@@ -76,3 +76,37 @@ func TestInstanceRefs(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingPortOffsetMeansDefaultAndExplicitZeroIsKept(t *testing.T) {
+	dir := t.TempDir()
+	write := func(body string) *Config {
+		p := dir + "/tsi.yaml"
+		writeFile(t, p, body)
+		c, err := Load(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	base := "version: 1\nmodules: [tsi-dpdp-cms]\nadmin: {name: A, email: a@example.com}\n"
+	if got := write(base).PortOffset; got != DefaultPortOffset {
+		t.Fatalf("a tsi.yaml without port_offset must get the default %d, got %d", DefaultPortOffset, got)
+	}
+	if got := write(base + "port_offset: 0\n").PortOffset; got != 0 {
+		t.Fatalf("an explicit port_offset: 0 must be honoured, got %d", got)
+	}
+	if got := write(base + "port_offset: 500\n").PortOffset; got != 500 {
+		t.Fatalf("got %d", got)
+	}
+	// Saving a config whose offset is 0 must write it, or the next load would turn it into 300.
+	c := Default("tsi-dpdp-cms")
+	c.PortOffset = 0
+	p := dir + "/saved.yaml"
+	if err := c.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	back, err := Load(p)
+	if err != nil || back.PortOffset != 0 {
+		t.Fatalf("round trip lost an explicit 0: %v %+v", err, back)
+	}
+}

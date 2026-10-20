@@ -152,10 +152,38 @@ func TestDownWithVolumesRemovesState(t *testing.T) {
 func TestMergeSpecDeep(t *testing.T) {
 	got := mergeSpec(
 		map[string]any{"app": map[string]any{"name": "a", "phone": "1"}, "x": 1},
-		map[string]any{"app": map[string]any{"name": "b"}})
+		map[string]any{"app": map[string]any{"name": "b"}}, nil)
 	app := got["app"].(map[string]any)
 	if app["name"] != "b" || app["phone"] != "1" || got["x"] != 1 {
 		t.Fatalf("merge: %v", got)
+	}
+}
+
+func TestMergeSpecReplacesListedPathsAndLists(t *testing.T) {
+	base := map[string]any{
+		"policy":   map[string]any{"id": "p", "content": map[string]any{"en": map[string]any{"title": "default"}}},
+		"entities": []any{"a", "b"},
+	}
+	over := map[string]any{
+		"policy":   map[string]any{"content": map[string]any{"hi": map[string]any{"title": "mine"}}},
+		"entities": []any{"c"},
+	}
+	got := mergeSpec(base, over, []string{"policy.content"})
+	pol := got["policy"].(map[string]any)
+	content := pol["content"].(map[string]any)
+	if _, stillThere := content["en"]; stillThere || content["hi"] == nil {
+		t.Fatalf("a replace path must be replaced, not merged: %v", content)
+	}
+	if pol["id"] != "p" {
+		t.Fatal("sibling keys must survive")
+	}
+	if l := got["entities"].([]any); len(l) != 1 || l[0] != "c" {
+		t.Fatalf("lists are replaced: %v", l)
+	}
+	// without the replace path the default would leak into the user's policy
+	merged := mergeSpec(base, over, nil)["policy"].(map[string]any)["content"].(map[string]any)
+	if _, leaked := merged["en"]; !leaked {
+		t.Fatal("expected a plain merge to keep the default language")
 	}
 }
 
@@ -183,7 +211,7 @@ func TestPlanWithInstancesNamesEachOne(t *testing.T) {
 		t.Fatalf("%+v", p)
 	}
 	joined := strings.Join(p.Ports, " ")
-	if !strings.Contains(joined, "node-a 127.0.0.1:8082") || !strings.Contains(joined, "node-b 127.0.0.1:8083") {
+	if !strings.Contains(joined, "node-a 127.0.0.1:8382") || !strings.Contains(joined, "node-b 127.0.0.1:8383") {
 		t.Fatalf("ports: %v", p.Ports)
 	}
 }

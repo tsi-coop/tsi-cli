@@ -40,6 +40,7 @@ func layout(t *testing.T, mut func(*config.Config)) *Layout {
 		t.Fatal(err)
 	}
 	cfg := config.Default("tsi-dpdp-cms")
+	cfg.PortOffset = 0 // goldens show the upstream ports; the default offset has its own test
 	if mut != nil {
 		mut(cfg)
 	}
@@ -198,5 +199,29 @@ func TestSecretsNeverInComposeFile(t *testing.T) {
 		if strings.Contains(string(b), s) {
 			t.Fatalf("secret %q leaked into the compose file", s)
 		}
+	}
+}
+
+func TestDefaultPortOffsetAvoidsUpstreamPorts(t *testing.T) {
+	cat, _ := catalog.Load()
+	cfg := config.Default("tsi-dpdp-cms", "tsi-privacy-vault", "tsi-compass", "tsi-dx-node:node-a", "tsi-dx-node:node-b")
+	if cfg.PortOffset != config.DefaultPortOffset || cfg.PortOffset < 100 {
+		t.Fatalf("new projects should shift ports by a few hundred, got %d", cfg.PortOffset)
+	}
+	l, err := Resolve(cat, cfg, fixedState())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"tsi-dpdp-cms": 8380, "tsi-privacy-vault": 8381, "tsi-compass": 8385, "node-a": 8382, "node-b": 8383}
+	for _, m := range l.Modules {
+		if m.AppPort != want[m.Key] {
+			t.Errorf("%s: port %d, want %d", m.Key, m.AppPort, want[m.Key])
+		}
+		if m.AppPort >= 8080 && m.AppPort <= 8099 {
+			t.Errorf("%s: %d is in the range upstream compose files use", m.Key, m.AppPort)
+		}
+	}
+	if cfg.SharedDBPort() != 5732 {
+		t.Fatalf("shared postgres port %d, want 5732", cfg.SharedDBPort())
 	}
 }
