@@ -42,7 +42,7 @@ bootstrap:
     api_key: {create: true, name: my-integration}
 ```
 
-**In v0.4.3 these keys cannot authenticate any request**, so `tsi` does not create one unless you ask, and the credential `tsi` gives you is the administrator login. The cause is in the module: key generation stores a hash in columns that request authentication does not read. See [Notes for the module maintainers](../maintainer-notes.md). Use the administrator login for scripts:
+**In v0.4.3 these keys cannot authenticate any request**, so `tsi` does not create one unless you ask, and the credential `tsi` gives you is the administrator login. The cause is in the module: key generation stores a hash in columns that request authentication does not read. Use the administrator login for scripts:
 
 ```bash
 BASE=http://127.0.0.1:8385

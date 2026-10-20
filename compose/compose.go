@@ -14,17 +14,17 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/tsicoop/tsi-cli/bootstrap"
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/certs"
-	"github.com/tsicoop/tsi-cli/config"
-	"github.com/tsicoop/tsi-cli/engine"
-	"github.com/tsicoop/tsi-cli/health"
-	"github.com/tsicoop/tsi-cli/migrate"
-	"github.com/tsicoop/tsi-cli/render"
-	"github.com/tsicoop/tsi-cli/secrets"
-	"github.com/tsicoop/tsi-cli/tsierr"
-	"github.com/tsicoop/tsi-cli/tsitest"
+	"github.com/tsi-coop/tsi-cli/bootstrap"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/certs"
+	"github.com/tsi-coop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/engine"
+	"github.com/tsi-coop/tsi-cli/health"
+	"github.com/tsi-coop/tsi-cli/migrate"
+	"github.com/tsi-coop/tsi-cli/render"
+	"github.com/tsi-coop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/tsitest"
 )
 
 // StateDir is where tsi keeps everything it generates, relative to the project directory.

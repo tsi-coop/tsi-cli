@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 const sqlBody = "CREATE TABLE t (id int);\n"

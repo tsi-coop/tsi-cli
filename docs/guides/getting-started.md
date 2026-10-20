@@ -21,7 +21,7 @@ sudo mv bin/tsi /usr/local/bin/
 tsi version
 ```
 
-Or `go install github.com/tsicoop/tsi-cli/cmd/tsi@latest` once the repository is published at that path. Homebrew and release binaries are planned.
+Or `go install github.com/tsi-coop/tsi-cli/cmd/tsi@latest` once the repository is published at that path. Homebrew and release binaries are planned.
 
 `tsi version` prints the nearest git tag, or the short commit hash if there are no tags. A `-dirty` suffix means the build came from a checkout with uncommitted changes.
 

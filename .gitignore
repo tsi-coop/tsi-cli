@@ -8,3 +8,6 @@
 /tsi.yaml
 /docker-compose.tsi.yml
 /tsi.lock
+
+# personal scratch notes
+/.help

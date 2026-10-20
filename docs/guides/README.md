@@ -26,7 +26,6 @@ Start here. The guides in this folder apply to every module; the product guides 
 
 ## Other documents
 
-- [Notes for the module maintainers](maintainer-notes.md): things found while integrating that the module repositories could change.
 - [Architecture](../design/architecture.md): the functional and technical design of `tsi`, and why it is built this way.
 
 ## A word on scope

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tsicoop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/catalog"
 )
 
 func TestWaitReadyRetriesUntilProbePasses(t *testing.T) {

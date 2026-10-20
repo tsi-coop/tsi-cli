@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // Container is the state of one compose service.

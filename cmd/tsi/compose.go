@@ -14,14 +14,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/compose"
-	"github.com/tsicoop/tsi-cli/config"
-	"github.com/tsicoop/tsi-cli/engine"
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/render"
-	"github.com/tsicoop/tsi-cli/tsierr"
-	"github.com/tsicoop/tsi-cli/tsitest"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/compose"
+	"github.com/tsi-coop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/engine"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/render"
+	"github.com/tsi-coop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/tsitest"
 )
 
 func newCompose(g *globals) *cobra.Command {

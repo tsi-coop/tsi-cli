@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/compose"
-	"github.com/tsicoop/tsi-cli/config"
-	"github.com/tsicoop/tsi-cli/testkit"
+	"github.com/tsi-coop/tsi-cli/compose"
+	"github.com/tsi-coop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/testkit"
 )
 
 // TestEndToEnd needs Docker. It brings the modules up together from nothing on one shared

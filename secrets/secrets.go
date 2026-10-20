@@ -15,8 +15,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // Generate produces a secret by generator name.

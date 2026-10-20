@@ -9,9 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/secrets"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // fakeModule is a minimal module: setup (409 the second time), login, create_app, key.

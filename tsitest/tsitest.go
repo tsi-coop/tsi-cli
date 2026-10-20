@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsicoop/tsi-cli/bootstrap"
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/bootstrap"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/secrets"
 )
 
 // Env is what a check can use.

@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // Check runs the module's readiness probe once.

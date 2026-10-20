@@ -13,10 +13,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/config"
-	"github.com/tsicoop/tsi-cli/secrets"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // Paths used in the generated compose file, relative to the project directory.

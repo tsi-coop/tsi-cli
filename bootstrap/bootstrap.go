@@ -16,10 +16,10 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/internal/redact"
-	"github.com/tsicoop/tsi-cli/secrets"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/internal/redact"
+	"github.com/tsi-coop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 // Admin is the administrator identity to create.

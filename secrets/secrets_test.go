@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 func TestGenerate(t *testing.T) {

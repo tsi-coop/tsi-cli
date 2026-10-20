@@ -6,7 +6,7 @@ Functional and technical design of `tsi-cli`, in one document. It describes what
 
 | | |
 |---|---|
-| Repository | `github.com/tsi-coop/tsi-cli` (Go module `github.com/tsicoop/tsi-cli`) |
+| Repository | `github.com/tsi-coop/tsi-cli` (Go module `github.com/tsi-coop/tsi-cli`) |
 | Binary | `tsi`; the first command group is `tsi compose` |
 | Language | Go 1.22, about 5,600 lines plus 1,600 lines of tests |
 | Runtime dependencies | Docker with the `compose` plugin; internet on first use of each module version |
@@ -88,7 +88,7 @@ It is also a Go library, so an application's own `go test` can start real module
 **TSI Coop itself.**
 - One onboarding path for all products instead of one README each.
 - A smoke-test suite per module that can run against every release.
-- Integration work exposes gaps early (no health endpoints, schema outside the image, inconsistent names); they are recorded in the [maintainer notes](../guides/maintainer-notes.md).
+- Integration work exposes gaps early (no health endpoints, schema outside the image, inconsistent names).
 - A new module is a new catalog entry, not new Go code, for the common shapes.
 
 **Things this could grow into** (not built): a demo environment that resets with one command; preview stacks per pull request in an ISV's CI; a conformance check an ISV runs to show their product works with TSI modules; an agent interface (see [19](#19-limitations-and-roadmap)).
@@ -593,4 +593,4 @@ When a flow does not fit the step vocabulary, extend the vocabulary (a step fiel
 | Port clashes on a developer machine | Default offset, preflight port check, `--plan` |
 | Secrets leaking into logs or git | File modes, `.gitignore`, redaction in every output path |
 
-**Roadmap** (no fixed order): release packaging (goreleaser, Homebrew); the dx-node synchronous lane; the remaining modules (`tsi-ledger` has a cookie session, which the runner supports; `tsi-sign` builds from source and needs an engine build fallback); contract checks against module request schemas in CI; a command that prints a setup token; an agent interface over the library with the safety rules above; module changes that would simplify `tsi` (schema inside the image, health endpoints) are in the [maintainer notes](../guides/maintainer-notes.md).
+**Roadmap** (no fixed order): release packaging (goreleaser, Homebrew); the dx-node synchronous lane; the remaining modules (`tsi-ledger` has a cookie session, which the runner supports; `tsi-sign` builds from source and needs an engine build fallback); contract checks against module request schemas in CI; a command that prints a setup token; an agent interface over the library with the safety rules above; and, if the module maintainers agree, module changes that would simplify `tsi` (the schema inside the image, health endpoints).

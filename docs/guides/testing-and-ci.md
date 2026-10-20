@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: {go-version: "1.22"}
-      - run: go install github.com/tsicoop/tsi-cli/cmd/tsi@latest
+      - run: go install github.com/tsi-coop/tsi-cli/cmd/tsi@latest
       - run: |
           mkdir stack && cd stack
           tsi compose init --modules tsi-dpdp-cms,tsi-privacy-vault --non-interactive
@@ -65,8 +65,8 @@ The library lets a test start the real modules, get their credentials, and clean
 import (
     "testing"
 
-    "github.com/tsicoop/tsi-cli/compose"
-    "github.com/tsicoop/tsi-cli/testkit"
+    "github.com/tsi-coop/tsi-cli/compose"
+    "github.com/tsi-coop/tsi-cli/testkit"
 )
 
 func TestMyApp(t *testing.T) {

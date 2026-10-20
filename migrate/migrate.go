@@ -13,8 +13,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 const ledger = "_tsi_cli_migrations"

@@ -80,14 +80,12 @@ The generic guides apply to every module; each product has its own page for what
 | `tsi-compass` | IT GRC and compliance operations | v0.4.3 | 6 | [guide](docs/guides/products/tsi-compass.md) |
 | `tsi-dx-node` | Peer-to-peer governed data exchange, run as a pair | v0.3.0 | 6 per node | [guide](docs/guides/products/tsi-dx-node.md) |
 
-Things found in the modules while building this are collected in the [notes for the module maintainers](docs/guides/maintainer-notes.md).
-
 ## Use it from Go
 
 ```go
 import (
-    "github.com/tsicoop/tsi-cli/compose"
-    "github.com/tsicoop/tsi-cli/testkit"
+    "github.com/tsi-coop/tsi-cli/compose"
+    "github.com/tsi-coop/tsi-cli/testkit"
 )
 
 func TestMyApp(t *testing.T) {
@@ -108,7 +106,7 @@ make network-test  # downloads every pinned migration from GitHub and checks its
 make integration   # real Docker: all four modules, dx-node as a pair, about 70 seconds
 ```
 
-How it is built, and why: the [architecture](docs/design/architecture.md) (functional and technical design in one document).
+How it is built, and why: the [architecture](docs/design/architecture.md) (functional and technical design in one document). What changed in each release: the [changelog](CHANGELOG.md).
 
 ## Limits
 
@@ -119,6 +117,6 @@ How it is built, and why: the [architecture](docs/design/architecture.md) (funct
 
 ## License & Contributions
 
-This project is distributed under the Apache 2.0 License. See [LICENSE](LICENSE).
+This project is distributed under the Apache 2.0 License. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-To contribute, email a short summary of your change and a link to your branch to admin@tsicoop.org. Direct commits to `main` are restricted, and every contribution is reviewed for fit, readability and long-term maintenance before it is merged.
+To contribute, email a short summary of your change and a link to your branch to admin@tsicoop.org. Direct commits to `main` are restricted, and every contribution is reviewed for fit, readability and long-term maintenance before it is merged. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).

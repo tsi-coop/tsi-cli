@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/config"
-	"github.com/tsicoop/tsi-cli/secrets"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/secrets"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

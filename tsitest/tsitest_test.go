@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/catalog"
 )
 
 // The smoke list in the catalog is documentation; the code is the truth. They must agree.

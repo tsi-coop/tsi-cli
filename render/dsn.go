@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/tsicoop/tsi-cli/config"
+	"github.com/tsi-coop/tsi-cli/config"
 )
 
 // externalHostPort extracts the port from the external admin DSN.

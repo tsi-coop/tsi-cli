@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/engine"
-	"github.com/tsicoop/tsi-cli/tsierr"
+	"github.com/tsi-coop/tsi-cli/engine"
+	"github.com/tsi-coop/tsi-cli/tsierr"
 )
 
 func newStack(t *testing.T, eng engine.Engine, opts ...Option) *Stack {

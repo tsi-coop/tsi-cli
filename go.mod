@@ -1,4 +1,4 @@
-module github.com/tsicoop/tsi-cli
+module github.com/tsi-coop/tsi-cli
 
 go 1.22.2
 

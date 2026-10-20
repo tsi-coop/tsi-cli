@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tsicoop/tsi-cli/catalog"
-	"github.com/tsicoop/tsi-cli/migrate"
+	"github.com/tsi-coop/tsi-cli/catalog"
+	"github.com/tsi-coop/tsi-cli/migrate"
 )
 
 // TestPinnedMigrationsMatchUpstream downloads every migration file of every module from
