@@ -9,6 +9,8 @@ import (
 
 // Fake records calls and returns canned state. For unit tests.
 type Fake struct {
+	// Dirs is what ProjectDirs returns.
+	Dirs       []string
 	mu         sync.Mutex
 	Calls      []string
 	Containers []Container
@@ -39,4 +41,8 @@ func (f *Fake) Logs(ctx context.Context, p Project, w io.Writer, o LogOptions, s
 
 func (f *Fake) Digest(ctx context.Context, image string) (string, error) {
 	return "", f.rec("Digest", image)
+}
+
+func (f *Fake) ProjectDirs(ctx context.Context, project string) ([]string, error) {
+	return f.Dirs, f.rec("ProjectDirs")
 }

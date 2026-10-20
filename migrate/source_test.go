@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +13,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/tsi-coop/tsi-cli/catalog"
 	"github.com/tsi-coop/tsi-cli/tsierr"
@@ -151,4 +155,13 @@ func asErr(err error, target **tsierr.Error) bool {
 		*target = e
 	}
 	return ok
+}
+
+func TestIsAuthFailure(t *testing.T) {
+	if !IsAuthFailure(&pgconn.PgError{Code: "28P01"}) || !IsAuthFailure(fmt.Errorf("wrapped: %w", &pgconn.PgError{Code: "28000"})) {
+		t.Fatal("bad password / invalid authorization must be recognised, also when wrapped")
+	}
+	if IsAuthFailure(&pgconn.PgError{Code: "57P03"}) || IsAuthFailure(errors.New("connection refused")) || IsAuthFailure(nil) {
+		t.Fatal("a server that is still starting is not an authentication failure")
+	}
 }

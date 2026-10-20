@@ -25,6 +25,14 @@ The database scripts are fetched from GitHub on first use (exit code 10, nothing
 
 A file at the pinned tag changed upstream after your `tsi` build pinned it. Nothing was cached or applied. Upgrade `tsi`, or report it. Do not work around it.
 
+### `the compose project "..." is already used by the stack in <directory>`
+
+Two project directories have the same `project:` in `tsi.yaml`, so they would share containers and the data volume. `up` stops before touching anything. Give this directory its own name (the error suggests one), or run `tsi compose down` in the other directory first. `tsi compose init` derives the project from the directory name, so this mostly happens with a `tsi.yaml` copied from another directory or created by an early version, which used `tsi` for everyone.
+
+### `PostgreSQL rejected the generated administrator password`
+
+The database volume was created earlier with a different password. This is the same cause as above: another stack with the same project name left its data volume (`<project>_pgdata`) behind, for example after `tsi compose down` without `--volumes`. `up` stops what it started and keeps the volume. Set a different `project:` in `tsi.yaml`, or, if you do not need that data, `docker volume rm <project>_pgdata`.
+
 ### `not ready after 3m0s`
 
 The module started but did not answer its readiness call. See what it says:

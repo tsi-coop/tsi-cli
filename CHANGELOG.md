@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.1
+
+### Fixed
+- **Two project directories no longer share a compose project.** The default project name was `tsi` for every directory, so a second directory reused the first one's containers and PostgreSQL volume and failed with a password error (it also recreated the first stack's PostgreSQL container). `init` now derives the project from the directory name, `up` refuses a project that belongs to another directory (before changing anything), and a rejected database password fails at once with an explanation, instead of retrying for a minute, and stops what that attempt started.
+
 ## v0.1.0 (2026-10-20): soft launch
 
 First release. `tsi compose` takes a developer from nothing to a running, provisioned and tested stack of TSI modules with one command, for local development, evaluation and CI. It is not a production installer. Design: [architecture](docs/design/architecture.md). Usage: [guides](docs/guides/README.md).

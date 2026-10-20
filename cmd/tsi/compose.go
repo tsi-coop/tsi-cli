@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -140,6 +141,10 @@ func newInit(g *globals) *cobra.Command {
 			}
 			if name != "" {
 				cfg.Admin.Name = name
+			}
+			cfg.Project = config.ProjectFromDir(g.dir)
+			if abs, err := filepath.Abs(g.dir); err == nil {
+				cfg.Project = config.ProjectFromDir(abs)
 			}
 			if g.project != "" {
 				cfg.Project = g.project

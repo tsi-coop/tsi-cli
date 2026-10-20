@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -92,6 +93,24 @@ func Key(ref string) string {
 	}
 	return m
 }
+
+// ProjectFromDir derives a compose project name from a directory, so two project
+// directories do not share containers and data volumes by accident. Names that cannot be
+// used as-is fall back to "tsi".
+func ProjectFromDir(dir string) string {
+	base := strings.ToLower(filepath.Base(filepath.Clean(dir)))
+	base = unsafeProjectRe.ReplaceAllString(base, "-")
+	base = strings.Trim(base, "-_")
+	if len(base) > 40 {
+		base = strings.Trim(base[:40], "-_")
+	}
+	if base == "" || !projectRe.MatchString(base) {
+		return "tsi"
+	}
+	return base
+}
+
+var unsafeProjectRe = regexp.MustCompile(`[^a-z0-9_-]+`)
 
 var instanceRe = regexp.MustCompile(`^[a-z][a-z0-9-]{0,30}$`)
 

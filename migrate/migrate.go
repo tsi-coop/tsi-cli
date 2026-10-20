@@ -7,11 +7,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/tsi-coop/tsi-cli/catalog"
 	"github.com/tsi-coop/tsi-cli/tsierr"
@@ -29,6 +31,12 @@ func connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 	return pgx.ConnectConfig(ctx, cfg)
 }
 
+// IsAuthFailure reports whether PostgreSQL rejected the credentials (SQLSTATE 28P01).
+func IsAuthFailure(err error) bool {
+	var pe *pgconn.PgError
+	return errors.As(err, &pe) && (pe.Code == "28P01" || pe.Code == "28000")
+}
+
 // WaitForServer retries until a connection to dsn succeeds or ctx ends.
 func WaitForServer(ctx context.Context, dsn string) error {
 	var last error
@@ -39,6 +47,9 @@ func WaitForServer(ctx context.Context, dsn string) error {
 			return nil
 		}
 		last = err
+		if IsAuthFailure(err) {
+			return err // retrying cannot help
+		}
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("postgres did not become reachable: %w", last)

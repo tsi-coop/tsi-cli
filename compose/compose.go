@@ -118,6 +118,7 @@ func New(opts ...Option) (*Stack, error) {
 			}
 		} else if len(o.modules) > 0 {
 			cfg = config.Default()
+			cfg.Project = config.ProjectFromDir(dir)
 		} else {
 			return nil, tsierr.New(tsierr.CodeNotFound, "", "", config.FileName+" not found",
 				"run `tsi compose init` in this directory first", nil)
@@ -354,6 +355,9 @@ func (s *Stack) Up(ctx context.Context, opts ...UpOption) error {
 		return err
 	}
 	hadState := s.Store.Exists()
+	if err := s.checkProjectOwnership(ctx); err != nil {
+		return err
+	}
 	running, err := s.Eng.PS(ctx, s.project())
 	if err != nil {
 		return err
@@ -405,12 +409,37 @@ func (s *Stack) Up(ctx context.Context, opts ...UpOption) error {
 	return nil
 }
 
+// checkProjectOwnership stops a stack from taking over containers that belong to another
+// project directory which happens to use the same compose project name.
+func (s *Stack) checkProjectOwnership(ctx context.Context) error {
+	dirs, err := s.Eng.ProjectDirs(ctx, s.Cfg.Project)
+	if err != nil {
+		return nil // an unreadable label must not block a normal run
+	}
+	for _, d := range dirs {
+		if filepath.Clean(d) != filepath.Clean(s.Dir) {
+			return tsierr.New(tsierr.CodeUsage, "", "up",
+				fmt.Sprintf("the compose project %q is already used by the stack in %s", s.Cfg.Project, d),
+				"give this directory its own project: set `project:` in tsi.yaml (for example `project: "+config.ProjectFromDir(s.Dir)+"`), or run `tsi compose down` in that directory first", nil)
+		}
+	}
+	return nil
+}
+
 func (s *Stack) migrateAll(ctx context.Context, l *render.Layout, st *secrets.State) error {
 	for _, m := range l.Modules {
 		adminDSN := l.AdminDSN(m, st.DBAdminPassword)
 		wctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		err := migrate.WaitForServer(wctx, adminDSN)
 		cancel()
+		if migrate.IsAuthFailure(err) {
+			// Stop what this attempt started (the volume and its data are kept), so a corrected
+			// project name does not then collide with a leftover container on the same port.
+			_ = s.Eng.Down(ctx, s.project(), false)
+			return tsierr.New(tsierr.CodeMigration, m.Key, "migrate",
+				"PostgreSQL rejected the generated administrator password",
+				"the database volume was created earlier with a different password, usually by another stack with the same project name ("+s.Cfg.Project+"). Set a different `project:` in tsi.yaml, or delete the old volume with `docker volume rm "+s.Cfg.Project+"_pgdata` if you do not need its data", err)
+		}
 		if err != nil {
 			return tsierr.New(tsierr.CodeMigration, m.Key, "migrate", "database not reachable", "check database settings and that the port is free", err)
 		}

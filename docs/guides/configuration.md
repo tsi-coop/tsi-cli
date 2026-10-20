@@ -36,7 +36,7 @@ migration_dirs:                   # local database scripts instead of the pinned
 
 | Key | Default | Notes |
 |---|---|---|
-| `project` | `tsi` | Lowercase letters, digits, `-`, `_`. Used in container, volume and network names, so two stacks on one machine need different projects |
+| `project` | the directory's name | Lowercase letters, digits, `-`, `_`. Used in container, volume and network names, so two stacks on one machine need different projects. `init` derives it from the directory (`~/work/My Stack` becomes `my-stack`), so separate directories do not share containers or data by accident. Two directories with the same value are refused by `up` |
 | `modules` | none | At least one. `module:instance` runs a module under an instance name. The instance name is the service, state and env-file name, and must be lowercase letters, digits and `-` |
 | `database.mode` | `shared` | See [Databases and ports](databases-and-ports.md) |
 | `port_offset` | `300` for new projects, and when the key is missing | `0` gives the upstream ports. The key is always written by `init` |

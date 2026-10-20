@@ -42,6 +42,9 @@ type Engine interface {
 	Down(ctx context.Context, project Project, removeVolumes bool) error
 	PS(ctx context.Context, project Project) ([]Container, error)
 	Logs(ctx context.Context, project Project, w io.Writer, o LogOptions, services ...string) error
+	// ProjectDirs lists the working directories of the existing containers of a compose
+	// project, so a stack never takes over another directory's containers.
+	ProjectDirs(ctx context.Context, project string) ([]string, error)
 	// Digest returns the repo digest of a local image, or "" if it has none.
 	Digest(ctx context.Context, image string) (string, error)
 }
@@ -204,6 +207,23 @@ func (d *Docker) Logs(ctx context.Context, p Project, w io.Writer, o LogOptions,
 		return err
 	}
 	return nil
+}
+
+// ProjectDirs reads the working directory Docker recorded on each container of a project.
+func (d *Docker) ProjectDirs(ctx context.Context, project string) ([]string, error) {
+	out, err := exec.CommandContext(ctx, "docker", "ps", "-a",
+		"--filter", "label=com.docker.compose.project="+project,
+		"--format", `{{.Label "com.docker.compose.project.working_dir"}}`).Output()
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for _, l := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			dirs = append(dirs, l)
+		}
+	}
+	return dedupe(dirs), nil
 }
 
 // Digest returns the registry digest of a pulled image.

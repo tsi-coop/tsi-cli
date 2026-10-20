@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidate(t *testing.T) {
 	c := Default("tsi-dpdp-cms")
@@ -108,5 +111,27 @@ func TestMissingPortOffsetMeansDefaultAndExplicitZeroIsKept(t *testing.T) {
 	back, err := Load(p)
 	if err != nil || back.PortOffset != 0 {
 		t.Fatalf("round trip lost an explicit 0: %v %+v", err, back)
+	}
+}
+
+func TestProjectFromDir(t *testing.T) {
+	for dir, want := range map[string]string{
+		"/home/me/work/my-tsi-stack":      "my-tsi-stack",
+		"/home/me/work/My Stack (v2)":     "my-stack-v2",
+		"/home/me/work/UPPER_case":        "upper_case",
+		"/home/me/work/-.-":               "tsi",
+		"/":                               "tsi",
+		"/tmp/" + strings.Repeat("a", 80): strings.Repeat("a", 40),
+	} {
+		got := ProjectFromDir(dir)
+		if got != want {
+			t.Errorf("ProjectFromDir(%q) = %q, want %q", dir, got, want)
+		}
+		if !projectRe.MatchString(got) {
+			t.Errorf("%q is not a valid project name", got)
+		}
+	}
+	if ProjectFromDir("/a/stack-one") == ProjectFromDir("/a/stack-two") {
+		t.Fatal("different directories must get different projects")
 	}
 }

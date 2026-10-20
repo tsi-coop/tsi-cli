@@ -59,7 +59,7 @@ It is also a Go library, so an application's own `go test` can start real module
 | **Instance** | A module run under a name, written `module:instance` (`tsi-dx-node:node-a`). Only some modules support more than one |
 | **Key** | The name an entry goes by: the instance name, or the module name. It is the compose service, the state key and the env-file name |
 | **Stack** | The set of modules in one project directory, described by `tsi.yaml` |
-| **Project directory** | Where `tsi.yaml`, the generated compose file and `.tsi/` live. One directory is one compose project |
+| **Project directory** | Where `tsi.yaml`, the generated compose file and `.tsi/` live. One directory is one compose project, named after the directory unless `project:` says otherwise |
 | **Catalog** | The embedded, declarative description of every module: image, ports, environment, migrations, readiness probe, bootstrap steps, smoke test list |
 | **Bootstrap** | The ordered, idempotent list of API calls that takes a started module to a usable one: administrator, tenant app, API key, entities, policy, partner nodes |
 | **Smoke test** | A Go check that exercises a bootstrapped module over HTTP with the credentials `tsi` created |
@@ -487,7 +487,7 @@ type Engine interface {
 }
 ```
 
-`Docker` shells out to `docker compose -p <project> [-f file]` (omitting `-f` before the first file exists, so `ps` can still tell whether containers exist). `Fake` records calls for unit tests. A Docker SDK engine could implement the same interface without changing any upper layer.
+`Docker` shells out to `docker compose -p <project> [-f file]` (omitting `-f` before the first file exists, so `ps` can still tell whether containers exist). `ProjectDirs` reads the working directory Docker recorded on a project's containers; `Up` uses it to refuse a project name that already belongs to another directory, before anything is written or started. `Fake` records calls for unit tests. A Docker SDK engine could implement the same interface without changing any upper layer.
 
 ### CLI
 
@@ -569,6 +569,7 @@ When a flow does not fit the step vocabulary, extend the vocabulary (a step fiel
 | Look-up-then-create where creates are not idempotent | Avoids duplicates and resets after lost state | Trusting a 409 |
 | Port offset 300 by default; `0` writes explicitly | A `tsi` stack never collides with a module run from its repository | Upstream ports |
 | Loopback binding | Several modules accept a first caller during setup | Publishing on all interfaces |
+| Compose project named after the directory, and refused if another directory owns it | The container, network and volume names come from the project, so a shared name silently shares data and PostgreSQL passwords | One fixed default name (it was `tsi` for everyone, and a second directory recreated the first one's database container) |
 | Soft launch of four modules | Verify the framework against the harder cases (cookie-free admin sessions, two-node exchange) first | Six modules at once |
 
 ## 19. Limitations and roadmap

@@ -215,3 +215,44 @@ func TestPlanWithInstancesNamesEachOne(t *testing.T) {
 		t.Fatalf("ports: %v", p.Ports)
 	}
 }
+
+func TestUpRefusesAProjectOwnedByAnotherDirectory(t *testing.T) {
+	fake := &engine.Fake{Dirs: []string{"/home/me/work/other-stack"}}
+	s := newStack(t, fake)
+	err := s.Up(context.Background())
+	var te *tsierr.Error
+	if !errors.As(err, &te) || te.Code != tsierr.CodeUsage || !strings.Contains(te.Msg, "/home/me/work/other-stack") {
+		t.Fatalf("want an error naming the other directory, got %v", err)
+	}
+	if !strings.Contains(te.Hint, "project:") {
+		t.Fatalf("the hint must say how to fix it: %q", te.Hint)
+	}
+	for _, c := range fake.Calls {
+		if strings.HasPrefix(c, "Up") || strings.HasPrefix(c, "Pull") || strings.HasPrefix(c, "Down") {
+			t.Fatalf("nothing may be started, pulled or stopped: %v", fake.Calls)
+		}
+	}
+	if _, statErr := os.Stat(filepath.Join(s.Dir, ".tsi/env")); statErr == nil {
+		t.Fatal("no files may be written for a project that belongs to someone else")
+	}
+}
+
+func TestOwnDirectoryIsNotACollision(t *testing.T) {
+	s := newStack(t, &engine.Fake{})
+	s.Eng.(*engine.Fake).Dirs = []string{s.Dir}
+	if err := s.checkProjectOwnership(context.Background()); err != nil {
+		t.Fatalf("a stack's own containers are fine: %v", err)
+	}
+}
+
+func TestDefaultProjectComesFromTheDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "My Stack")
+	os.MkdirAll(dir, 0o755)
+	s, err := New(WithDir(dir), WithModules("tsi-dpdp-cms"), WithEngine(&engine.Fake{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Cfg.Project != "my-stack" {
+		t.Fatalf("project %q, want my-stack", s.Cfg.Project)
+	}
+}
