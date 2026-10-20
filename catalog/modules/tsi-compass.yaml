@@ -1,0 +1,120 @@
+name: tsi-compass
+title: TSI Compass
+purpose: IT GRC and compliance operations
+# Image v0.4.3 is built from commit ccabfff ("v0.4.3 release"); this repository has no git tags,
+# so migrations are pinned to that commit.
+image: {repo: tsicoop/tsi-compass, tag: v0.4.3}
+container_port: 8080
+ports: {app: 8085, db: 5437}
+db:
+  name: tsi_compass
+  user: tsi_compass
+session: bearer
+# Compass v0.4.3 generates API keys it cannot authenticate (key generation writes
+# api_key_hash/api_secret_hash, request authentication reads key_value), so the credential
+# is the administrator login and key generation is opt-in.
+credentials: admin
+setup_token: TSI_BOOTSTRAP_TOKEN
+min_password_len: 12
+
+env:
+  - {name: POSTGRES_HOST,   value: "jdbc:postgresql://{{.DBHost}}:{{.DBPort}}"}
+  - {name: POSTGRES_DB,     value: "{{.DBName}}"}
+  - {name: POSTGRES_USER,   value: "{{.DBUser}}"}
+  - {name: POSTGRES_PASSWD, value: "{{.DBPass}}", secret: true}
+  - {name: TSI_COMPASS_ENV, default: local}
+  - {name: BRAND_NAME, default: TSI COMPASS}
+  - {name: TSI_EXPORT_PATH, default: /var/lib/tsi-compass/exports/}
+  - {name: JWT_SECRET, generator: random32, secret: true}
+  - {name: DB_ENCRYPTION_KEY, generator: random32, secret: true, immutable: true}
+  - {name: TSI_LOOKUP_SALT, generator: random32, secret: true, immutable: true}
+  - {name: TSI_BOOTSTRAP_TOKEN, generator: random32, secret: true}
+  - {name: ALLOWED_ORIGINS, value: "{{.Origin}}"}
+  - {name: TSI_VENDOR_PORTAL_ENABLED, default: "false"}
+
+volumes:
+  - {name: exports, path: /var/lib/tsi-compass/exports/}
+
+migrations:
+  source: {repo: tsi-coop/tsi-compass, ref: ccabfff3d0c13c734a1a1ed77ed3fcfffb580439, dir: db}
+  steps:
+    - {file: 01_init.sql, sha256: cea3fadf635c690785c433badf7cd576b222eb13a283d6c690606b36c7dfd9fb}
+    - {file: 02_data_register.sql, sha256: f443adeefc68420d47a65a5ed53389bd1bf302b9bf2666937a27d05f847690e6}
+    - {file: 03_selfservice.sql, sha256: 68d9d592566479fff7d3c87975e1bf58fdab0ecbe452ecae4812977bffd5041f}
+    - {file: 04_notifications.sql, sha256: 97966f4b23b8ed889e1659b424ee435f39d584abcf044137dab87a4bc8847b85}
+    - {file: 05_ticket_escalation.sql, sha256: 408a648b5d45a9ddf06ee06727d0ce2d837b1f7f0e3034c9378f4f816149e71f}
+    - {file: 06_ticket_categories.sql, sha256: e27a663c61cc0ae9d8a1f4e18ae0118719c20b610d1f3880b8d1b2acbd059b0a}
+    - {file: 07_supervisor_role.sql, sha256: a0ec91860d7797ed5924cf1a6fa303bb2fcb83c8428a4969ac673c9920decf9c}
+    - {file: 08_supply_chain.sql, sha256: e27a588bcf04b77f34f2c436aa77f314405cd1cb1b91f723567dbdcedef0f540}
+    - {file: 09_ticket_resolution_notes.sql, sha256: 08e3e3f327bfa324ba898d8f85691ffa7a461a0cc658e5dc5fea0a495d90d577}
+    - {file: 10_ticket_subcategories.sql, sha256: 7f619d9d1bc919b7fa39bcede90c73cf6f030fd1d2c2570555e27cd36cbef571}
+    - {file: 11_asset_categories.sql, sha256: e015b95b050a5eadae7f800051c4c1cce1d7b97f3fb067577ea66b7c423c50d4}
+    - {file: 12_asset_tag_location.sql, sha256: 0c8be4e6ba0e162ab91f43ceba9d7e7a1c6ff80dad320f5cdd87d1c1f4eab645}
+    - {file: 13_manager_hierarchy.sql, sha256: bd8138203997a0a7470ee02b3997e3c79c1e2a4d9c8548abcd44b166e79b33e9}
+    - {file: 14_ticket_attachments.sql, sha256: c059d0434c4ee534cce8013f802534f3781394b23cd5e9214fe60295ba9bf9e1}
+    - {file: 15_change_request_attachments.sql, sha256: 564a8a672d283473ef0bd42ca86b6ac5c0ec3b9922a53baac1b5d64c6073fda1}
+    - {file: 16_change_request_comments.sql, sha256: 9dce6128f0deee86bb5494689e623bdf649a11a507ac246f51a8d8e48c3ebbab}
+    - {file: 17_ticket_closed_at.sql, sha256: 3d5fdff15a23ebabc7c305d31c6af732c121bf97a4869fd5e34bb5a878e76f74}
+    - {file: 18_data_governance.sql, sha256: 162e3c5a478a813f82c0c63f5f27be962d21d59c4eb76434bbcc5937886a23e9}
+    - {file: 19_dpia.sql, sha256: b97ca665493b30c60aaf4d2e6019c7546cc6e0455e64eab009c254f560dd4e86}
+    - {file: 20_data_discovery.sql, sha256: a512062985f6fd99bdeaa09247c0d49d7e3e09cd6f0e322d6e654871456d1bed}
+    - {file: 21_tprm.sql, sha256: 947c44e066a054f182d3f8756f01fd5d66da7f92757db30e00c6782e514d595e}
+    - {file: 22_vendor_portal.sql, sha256: 97a72819314da7768282b1a62bd0f07524e1b982f18b408ff069201adf3e3c66}
+
+# check_setup is public and reads the database.
+ready:
+  path: /api/v1/bootstrap/setup
+  body: {_func: check_setup}
+  expect: [200]
+
+spec_defaults:
+  admin:
+    name: "{{.Admin.Name}}"
+  api_key:
+    create: false
+    name: tsi-cli
+    description: Created by tsi-cli
+
+bootstrap:
+  - id: setup
+    description: Create the first administrator
+    path: /api/v1/bootstrap/setup
+    body:
+      _func: complete_setup
+      admin_name: "{{.Admin.Name}}"
+      admin_email: "{{.Admin.Email}}"
+      admin_password: "{{.Admin.Password}}"
+      setup_token: "{{.Env.TSI_BOOTSTRAP_TOKEN}}"
+    expect: [200, 201]
+    already_done: [409]
+  - id: login
+    description: Log in as the administrator
+    path: /api/v1/admin/user
+    body:
+      _func: login
+      email: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+    expect: [200]
+    capture: {token: token}
+    secret: [token]
+    volatile: true
+  - id: generate_api_key
+    description: Generate an API key
+    path: /api/v1/admin/apikey
+    auth: bearer
+    when: Spec.api_key.create
+    body:
+      _func: generate_api_key
+      name: "{{.Spec.api_key.name}}"
+      description: "{{.Spec.api_key.description}}"
+    expect: [200, 201]
+    capture: {api_key: api_key, api_secret: api_secret}
+    secret: [api_secret]
+
+smoke:
+  - {id: ready, description: The app answers the readiness probe}
+  - {id: setup_complete, description: Setup reports that the first administrator exists}
+  - {id: wrong_password_refused, description: A wrong administrator password is refused with 401}
+  - {id: unauthenticated_refused, description: An admin call without a session is refused with 401}
+  - {id: reference_data, description: The migrations seeded the asset categories}
+  - {id: asset_roundtrip, description: "An asset can be created, listed and deleted"}

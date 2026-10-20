@@ -1,0 +1,10 @@
+# build output
+/bin/
+/dist/
+/tsi
+
+# tsi-cli project state (secrets) if someone runs tsi in this checkout
+/.tsi/
+/tsi.yaml
+/docker-compose.tsi.yml
+/tsi.lock

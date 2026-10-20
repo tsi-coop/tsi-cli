@@ -1,0 +1,141 @@
+name: tsi-privacy-vault
+title: TSI Privacy Vault
+purpose: PII vault with tokenization, blind-index search and erasure
+image: {repo: tsicoop/tsi-privacy-vault, tag: v0.3.0}
+container_port: 8080
+ports: {app: 8081, db: 5433}
+db:
+  name: tsi_privacy_vault
+  user: tsi_vault
+session: bearer
+setup_token: TSI_PRIVACY_VAULT_BOOTSTRAP_TOKEN
+min_password_len: 12
+
+env:
+  - {name: POSTGRES_HOST,   value: "jdbc:postgresql://{{.DBHost}}:{{.DBPort}}"}
+  - {name: POSTGRES_DB,     value: "{{.DBName}}"}
+  - {name: POSTGRES_USER,   value: "{{.DBUser}}"}
+  - {name: POSTGRES_PASSWD, value: "{{.DBPass}}", secret: true}
+  # "local" lets the admin console cookie work over plain http; upstream defaults to production.
+  - {name: TSI_PRIVACY_VAULT_ENV, default: local}
+  - {name: TSI_PRIVACY_VAULT_NODE_ID, default: TSI_LOCAL}
+  # The root key. Data keys are wrapped by it, so losing or changing it makes stored data unreadable.
+  - {name: TSI_PRIVACY_VAULT_MASTER_KEY, generator: random32, secret: true, immutable: true}
+  # Keys the blind search index; changing it silently breaks search for existing records.
+  - {name: TSI_PRIVACY_VAULT_INDEX_SECRET, generator: random32, secret: true, immutable: true}
+  - {name: TSI_PRIVACY_VAULT_JWT_SECRET, generator: random32, secret: true}
+  - {name: TSI_PRIVACY_VAULT_BOOTSTRAP_TOKEN, generator: random32, secret: true}
+  - {name: TSI_PRIVACY_VAULT_MAX_UPLOAD_KB, default: "5120"}
+  - {name: TSI_EXPORT_PATH, default: /var/lib/tsi/exports/}
+  - {name: TSI_PRIVACY_VAULT_KMS_PROVIDER, default: LOCAL}
+  - {name: TSI_PRIVACY_VAULT_FILE_STORE, default: DATABASE}
+  - {name: TSI_PRIVACY_VAULT_ERASURE_JOB_MINUTES, default: "60"}
+
+volumes:
+  - {name: exports, path: /var/lib/tsi/exports/}
+
+migrations:
+  source: {repo: tsi-coop/tsi-privacy-vault, ref: v0.3.0, dir: db}
+  steps:
+    - {file: 00_init.sql, sha256: c6fb16186448d06e43bb20c6e62bcfa77a14005d7dea13f7788edc773b4c428f}
+    - {file: 01_key_management.sql, sha256: 92467309dc22ec208adbca2eb11524676c48b2112bdb77991e1508241979f2d4}
+    - {file: 02_file_storage.sql, sha256: c20cde0f569a5066819f1f6a8d859b3d91f7482580a36c6095294c83bfb50577}
+    - {file: 03_erasure.sql, sha256: 4447b722e229605094dd15e66920a00bdb40452f245cb13e23f6a84d741c161b}
+    - {file: 04_audit_chain.sql, sha256: f610590bb2c19dcd1eb1a4667dfea4d5adcb8790b4d6308bb52c98e677f6ddc4}
+
+# No health endpoint exists. A setup call with a wrong token is refused (401) before any
+# database access, so it proves the app is serving without writing to the audit log.
+ready:
+  path: /api/admin/setup
+  body: {_func: create_user, setup_token: tsi-readiness-probe, role: SYSTEM_ADMIN, username: probe, email: probe@invalid.example, password: probe, active: true}
+  expect: [401]
+
+spec_defaults:
+  admin:
+    username: admin
+  api_key:
+    label: tsi-cli
+  entities:
+    - {code: TSI_ID_NUMBER, name: ID number, flavor: ID, regex: '^[0-9]{12}$', mime_types: ""}
+    - {code: TSI_NOTE, name: Note, flavor: DATA, regex: "", mime_types: ""}
+    - {code: TSI_DOCUMENT, name: Document, flavor: FILE, regex: "", mime_types: "application/pdf,image/png"}
+
+bootstrap:
+  - id: setup
+    description: Create the first administrator
+    path: /api/admin/setup
+    body:
+      _func: create_user
+      username: "{{.Spec.admin.username}}"
+      email: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+      role: SYSTEM_ADMIN
+      active: true
+      setup_token: "{{.Env.TSI_PRIVACY_VAULT_BOOTSTRAP_TOKEN}}"
+    expect: [200, 201]
+    # The vault answers 403 "Setup Phase Expired" once a SYSTEM_ADMIN exists.
+    already_done: [403]
+  - id: login
+    description: Log in as the administrator
+    path: /api/admin/login
+    body:
+      _func: admin_login
+      email: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+    expect: [200]
+    capture: {token: token}
+    secret: [token]
+    volatile: true
+  - id: create_entity
+    description: Create an entity (a kind of data the vault holds)
+    path: /api/admin/entity
+    auth: bearer
+    foreach: Spec.entities
+    body:
+      _func: create_entity
+      active: true
+      entity_code: "{{.Item.code}}"
+      entity_name: "{{.Item.name}}"
+      flavor: "{{.Item.flavor}}"
+      validation_regex: "{{.Item.regex}}"
+      mime_types: "{{.Item.mime_types}}"
+    expect: [200, 201]
+    already_done: [409]
+    already_done_body: duplicate key
+  - id: create_key
+    description: Create the client API key
+    path: /api/admin/apikey
+    auth: bearer
+    body:
+      _func: create_key
+      label: "{{.Spec.api_key.label}}"
+      active: true
+    expect: [200, 201]
+    capture: {api_key: data.api_key_id, api_secret: data.raw_api_secret}
+    secret: [api_secret]
+  - id: grant
+    description: Grant the key read and write on an entity
+    path: /api/admin/permission
+    auth: bearer
+    foreach: Spec.entities
+    body:
+      _func: create_permission
+      api_key: "{{.Vars.api_key}}"
+      resource_type: ENTITY
+      resource_id: "{{.Item.code}}"
+      can_read: true
+      can_write: true
+      granted_by: tsi-cli
+    expect: [200, 201]
+
+smoke:
+  - {id: ready, description: The app answers the readiness probe}
+  - {id: reject_bad_key, description: A wrong API secret is refused with 401}
+  - {id: store_fetch_id, description: An ID value is stored and fetched back unchanged}
+  - {id: store_fetch_data, description: A DATA value is stored and fetched back unchanged}
+  - {id: store_fetch_file, description: A file is stored and fetched back with its name}
+  - {id: validation, description: A value that fails the entity pattern is rejected}
+  - {id: search, description: A stored value is found by the blind index}
+  - {id: unknown_reference, description: An unknown reference is not returned}
+  - {id: read_only_cannot_store, description: A read-only key can fetch but not store}
+  - {id: erasure, description: Shredding a principal makes its records read as erased}

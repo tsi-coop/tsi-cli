@@ -1,4 +1,4 @@
-# tsi-cli: Go Library and CLI Implementation Plan (`tsi compose`)
+# tsi-cli: Go Library and CLI Implementation Plan (`tsi cli`)
 
 **Repository:** `tsi-cli` (renamed from `tsi-compose` to avoid confusion with `tsi-compass`). **Go module:** `github.com/tsicoop/tsi-cli`. **Binary:** `tsi`. **First feature:** the `tsi compose` command group. In this document, "`tsi compose`" is the feature and "`tsi-cli`" is the repo.
 

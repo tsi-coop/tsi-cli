@@ -1,0 +1,229 @@
+name: tsi-dpdp-cms
+title: TSI DPDP CMS
+purpose: Consent management under the DPDP Act
+image: {repo: tsicoop/tsi-dpdp-cms, tag: v0.5.3}
+container_port: 8080
+ports: {app: 8080, db: 5432}
+db:
+  name: tsi_cms
+  user: tsi_cms
+  extensions: [uuid-ossp, pgcrypto]
+session: bearer
+setup_token: TSI_BOOTSTRAP_TOKEN
+min_password_len: 12
+
+env:
+  - {name: POSTGRES_HOST,  value: "jdbc:postgresql://{{.DBHost}}:{{.DBPort}}"}
+  - {name: POSTGRES_DB,    value: "{{.DBName}}"}
+  - {name: POSTGRES_USER,  value: "{{.DBUser}}"}
+  - {name: POSTGRES_PASSWD, value: "{{.DBPass}}", secret: true}
+  - {name: TSI_DPDP_CMS_ENV, default: local}
+  - {name: TSI_EXPORT_PATH, default: /var/lib/tsi/exports/}
+  - {name: JWT_SECRET, generator: random32, secret: true}
+  - {name: DB_ENCRYPTION_KEY, generator: random32, secret: true, immutable: true}
+  - {name: TSI_LOOKUP_SALT, generator: random32, secret: true, immutable: true}
+  - {name: TSI_BOOTSTRAP_TOKEN, generator: random32, secret: true}
+  - {name: ALLOWED_ORIGINS, value: "{{.Origin}}"}
+  - {name: BRAND_NAME, default: TSI DPDP CMS}
+
+keystore:
+  path_env: TSI_KEYSTORE_PATH
+  pass_env: TSI_KEYSTORE_PASS
+  alias_env: TSI_KEYSTORE_ALIAS
+  alias: "1"   # alias Java derives for a PKCS#12 entry without a friendly name
+  container_path: /etc/tsi/keystore.p12
+  common_name: TSI DPDP CMS
+
+volumes:
+  - {name: exports, path: /var/lib/tsi/exports/}
+
+migrations:
+  source: {repo: tsi-coop/tsi-dpdp-cms, ref: v0.5.3, dir: db}
+  steps:
+    - {file: 01_init.sql, sha256: e629c4c1cf9df3f163c644e9ae84a6dcdebac40b349406fd08e2dcf6d74523d3}
+    - {file: 02_audit_ledger_schema.sql, sha256: 1d843b814edc1ce48f876eeeb0d743f2a21af1ed9e093575c01940bbb7972731}
+    - {file: 03_ropa.sql, sha256: e1e84cfddc5e9a9f8f0bb41d88fa2dbdee50af095c231e560d361903eb3b7a53}
+    # 04_gaps.sql reads current_setting('app.enc_key'); upstream sets it in 03z_enc_key.sh.
+    - {action: set_database_setting, setting: app.enc_key, from_env: DB_ENCRYPTION_KEY}
+    - {file: 04_gaps.sql, sha256: 079c123aa18b03e55fcc5c6ed67e3208c32e77105ec4bd0be07e225e75e23342}
+    - {file: 05_fix_data_principal_pk.sql, sha256: 4d26bf4874b13fa77eb59f7a913a26b69e7b3e3d8aac0450beae426bc67a72d0}
+    - {file: 06_breach.sql, sha256: 193c714b60b34486a6734feae698c2321beb2436ff0110135aa920f1933192f3}
+    - {file: 07_notification_message_templates.sql, sha256: bbdda74fcaec7d80692789ce4fe5ed6faca3029182b4f8ec2b47775ba3cb784c}
+    - {file: 08_webhook_config.sql, sha256: 647a0c92b895ccceddb72ccc7920269f9c18cb799da471903b1f98c2c3b678c8}
+    - {file: 09_job_schedule_state.sql, sha256: ad5de48dd12c0d99057d6429e802ef609cbf0ad08d9860b792cdfd9bcca1a801}
+    - {file: 10_purge_assignment.sql, sha256: e1073fecee349e8474046f4bd12e675488838cc32f23972f0128702d16dc783d}
+    - {file: 11_jobs_input_payload.sql, sha256: 3c7dd2b2b9d0c09b9c19af82ef768a40e1b0bf92a829f88b166e750b7574dfec}
+    - {file: 12_rights_app_config.sql, sha256: 0f49447052791b14d7812c540d994ee2d1262e2977ab996bdb45de952dc59a81}
+    - {file: 13_breach_policy_scope.sql, sha256: 4e5f5591515ce597fa505b5aa55a923f908f317d1d8d2bbdeff2c25f4d42d22f}
+
+ready:
+  path: /api/v1/public/principal
+  body: {_func: list_active_fiduciaries}
+  expect: [200]
+
+spec_defaults:
+  fiduciary:
+    name: Default Fiduciary
+    contact_person: "{{.Admin.Name}}"
+    email: "{{.Admin.Email}}"
+    phone: "9999999999"
+    primary_domain: example.com
+    cms_cname: consent.example.com
+  app:
+    name: default
+    email: "{{.Admin.Email}}"
+    phone: "9999999999"
+    processing_purposes: Consent management
+  api_key:
+    description: tsi-cli
+    permissions: [READ, WRITE]
+  policy:
+    id: tsi-default-policy
+    jurisdiction: IN
+    content:
+      en:
+        language: en
+        title: Privacy Notice
+        introduction: This notice explains how personal data is processed, in line with the Digital Personal Data Protection Act, 2023.
+        general_purpose_description: We process personal data to provide and improve our services.
+        data_processing_purposes:
+          - id: purpose_service
+            name: Service delivery
+            description: To provide the service you asked for.
+            legal_basis: Consent (DPDP Act, Section 6(1)(a))
+            data_categories_involved: [full_name, email_address]
+            recipients_or_third_parties: []
+            retention_policy: Kept for 1 year after your last use of the service.
+            retention_duration_value: 1
+            retention_duration_unit: YEARS
+            retention_start_event: COLLECTION
+            is_mandatory_for_service: false
+            is_sensitive: false
+        data_categories_details:
+          - {id: full_name, name: Full name, description: Your name.}
+          - {id: email_address, name: Email address, description: Your email address.}
+        security_measures: TLS in transit, encryption at rest, role-based access control and audit logging.
+
+bootstrap:
+  - id: setup
+    description: Create the first administrator
+    path: /api/v1/bootstrap/setup
+    body:
+      _func: initial_setup
+      email: "{{.Admin.Email}}"
+      name: "{{.Admin.Name}}"
+      password: "{{.Admin.Password}}"
+      setup_token: "{{.Env.TSI_BOOTSTRAP_TOKEN}}"
+    expect: [201]
+    already_done: [409]
+  - id: login
+    description: Log in as the administrator
+    path: /api/v1/admin/operator
+    body:
+      _func: login
+      identifier: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+    expect: [200]
+    capture: {token: token}
+    secret: [token]
+    volatile: true
+  - id: create_fiduciary
+    description: Create the data fiduciary
+    path: /api/v1/admin/fiduciary
+    auth: bearer
+    body:
+      _func: create_fiduciary
+      name: "{{.Spec.fiduciary.name}}"
+      contact_person: "{{.Spec.fiduciary.contact_person}}"
+      email: "{{.Spec.fiduciary.email}}"
+      phone: "{{.Spec.fiduciary.phone}}"
+      primary_domain: "{{.Spec.fiduciary.primary_domain}}"
+      cms_cname: "{{.Spec.fiduciary.cms_cname}}"
+    expect: [201]
+    already_done: [409]
+    capture: {fiduciary_id: data.fiduciary_id}
+    recover:
+      path: /api/v1/admin/fiduciary
+      body: {_func: list_fiduciaries, search: "{{.Spec.fiduciary.name}}"}
+      match: {name: "{{.Spec.fiduciary.name}}"}
+      capture: {fiduciary_id: fiduciary_id}
+  - id: create_app
+    description: Create the tenant app
+    path: /api/v1/admin/app
+    auth: bearer
+    body:
+      _func: create_app
+      fiduciary_id: "{{.Vars.fiduciary_id}}"
+      name: "{{.Spec.app.name}}"
+      email: "{{.Spec.app.email}}"
+      phone: "{{.Spec.app.phone}}"
+      processing_purposes: "{{.Spec.app.processing_purposes}}"
+    expect: [201]
+    already_done: [409]
+    capture: {app_id: data.app_id}
+    recover:
+      path: /api/v1/admin/app
+      body: {_func: list_apps, fiduciary_id: "{{.Vars.fiduciary_id}}", search: "{{.Spec.app.name}}"}
+      match: {name: "{{.Spec.app.name}}"}
+      capture: {app_id: app_id}
+  - id: generate_api_key
+    description: Generate the app API key
+    path: /api/v1/admin/apikey
+    auth: bearer
+    body:
+      _func: generate_api_key
+      fiduciary_id: "{{.Vars.fiduciary_id}}"
+      app_id: "{{.Vars.app_id}}"
+      description: "{{.Spec.api_key.description}}"
+      permissions: "{{.Spec.api_key.permissions}}"
+    expect: [201]
+    capture: {api_key: data.key_id, api_secret: data.raw_api_key}
+    secret: [api_secret]
+  - id: create_policy
+    description: Create a draft consent policy
+    path: /api/v1/admin/policy
+    auth: bearer
+    body:
+      _func: create_policy
+      policy_id: "{{.Spec.policy.id}}"
+      fiduciary_id: "{{.Vars.fiduciary_id}}"
+      jurisdiction: "{{.Spec.policy.jurisdiction}}"
+      policy_content: "{{.Spec.policy.content}}"
+    expect: [201]
+    already_done: [409]
+  - id: publish_policy
+    description: Publish the policy
+    path: /api/v1/admin/policy
+    auth: bearer
+    body:
+      _func: publish_policy
+      policy_id: "{{.Spec.policy.id}}"
+    expect: [200]
+    already_done: [409]
+  - id: find_ropa_entry
+    description: Find the ROPA entry created for the policy
+    path: /api/v1/admin/ropa
+    auth: bearer
+    body: {_func: list_entries, fiduciary_id: "{{.Vars.fiduciary_id}}"}
+    expect: [200]
+    select:
+      match: {status: draft, linked_policy_ids: '["{{.Spec.policy.id}}"]'}
+      capture: {ropa_entry_id: id}
+      optional: true
+  - id: activate_policy
+    description: Publish the ROPA entry, which activates the policy
+    path: /api/v1/admin/ropa
+    auth: bearer
+    when: Vars.ropa_entry_id
+    body: {_func: publish_entry, id: "{{.Vars.ropa_entry_id}}"}
+    expect: [200]
+    already_done: [409]
+
+smoke:
+  - {id: ready, description: The app and its database answer the readiness probe}
+  - {id: reject_bad_key, description: An invalid API key is refused with 401}
+  - {id: active_policy, description: The published policy is returned}
+  - {id: record_consent, description: A consent can be recorded}
+  - {id: validate_consent, description: The recorded consent validates}
+  - {id: withdraw_consent, description: The consent can be withdrawn}
+  - {id: read_only_cannot_write, description: A READ-only key cannot record consent}

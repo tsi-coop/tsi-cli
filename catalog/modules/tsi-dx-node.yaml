@@ -1,0 +1,297 @@
+name: tsi-dx-node
+title: TSI DX Node
+purpose: Peer-to-peer governed data exchange between organisations
+image: {repo: tsicoop/tsi-dx-node, tag: v0.3.0}
+container_port: 8080
+# Instances take consecutive host ports: the first node 8082/5434, the second 8083/5435.
+ports: {app: 8082, db: 5434}
+db:
+  name: tsi_dx_node
+  user: tsi_dx_node
+session: bearer
+setup_token: TSI_DX_NODE_BOOTSTRAP_TOKEN
+credentials: admin
+# The node enforces upper, lower, digit and special characters.
+admin_password: strong
+min_password_len: 12
+# Run two instances to try an exchange, e.g.  modules: [tsi-dx-node:node-a, tsi-dx-node:node-b]
+# The image's built-in TLS certificate is valid for exactly these names, and a node verifies
+# its peer's certificate against the name it connects to, so the two instances answer to them.
+identity: {p2p_port: 8443, max_instances: 2, hostnames: [node-a-server-1, node-b-server-1]}
+
+env:
+  - {name: POSTGRES_HOST,   value: "jdbc:postgresql://{{.DBHost}}:{{.DBPort}}"}
+  - {name: POSTGRES_DB,     value: "{{.DBName}}"}
+  - {name: POSTGRES_USER,   value: "{{.DBUser}}"}
+  - {name: POSTGRES_PASSWD, value: "{{.DBPass}}", secret: true}
+  # "development" lets the console cookie work over plain http; upstream defaults to production.
+  - {name: TSI_DX_NODE_ENV, default: development}
+  - {name: TSI_DX_NODE_JWT_SECRET, generator: random32, secret: true}
+  - {name: TSI_DX_NODE_BOOTSTRAP_TOKEN, generator: random32, secret: true}
+  - {name: TSI_EXPORT_PATH, default: /var/lib/tsi/exports/}
+
+volumes:
+  - {name: exports, path: /var/lib/tsi/exports/}
+
+migrations:
+  source: {repo: tsi-coop/tsi-dx-node, ref: v0.3.0, dir: db}
+  steps:
+    - {file: 01_init.sql, sha256: 007027c0c8e317532e918b2c38ac712ef2feb4f0ac3c2463efe95668611b2c57}
+    - {file: 02_sync_schema_changes.sql, sha256: 2840a57e5dc84114b68895965b8ce5bfc0daa88fcd49c071438e4ba685474f1b}
+    - {file: 03_contract_participants.sql, sha256: 154062dc99352130a6cbc1dbe9f87d0dae193328f5eac4f2f9cf2a838956cd21}
+    - {file: 04_suspended_participant_status.sql, sha256: d44f8124da67116f50c70c1bd810e21f98ab15733af93fd0f7e53a4b1636a7d3}
+    - {file: 05_transfer_retry.sql, sha256: 63166517b7046a6dceafa717f61947fdb83a4165e66b86344df2b0725560aa8d}
+
+# A setup call with a wrong token is refused (401) before any database access.
+ready:
+  path: /api/admin/registeradmin
+  body:
+    node_id: PROBE
+    fqdn: probe
+    network_port: 8443
+    username: probe
+    email: probe@invalid.example
+    password: "Probe-1234!"
+    confirm: "Probe-1234!"
+    setup_token: tsi-readiness-probe
+  expect: [401]
+
+spec_defaults:
+  contract:
+    name: TSI sample exchange
+    description: Created by tsi-cli
+    retention_days: 30
+    pii_fields: [applicant_id, mobile]
+    governance_rules:
+      pii_anonymization: {applicant_id: HASH, mobile: MASK}
+    schema:
+      $schema: http://json-schema.org/draft-07/schema#
+      type: object
+      required: [applicant_id, mobile, product, amount]
+      properties:
+        applicant_id: {type: string, x-pii: true}
+        mobile: {type: string, x-pii: true}
+        product: {type: string, enum: [loan, credit_card, insurance]}
+        amount: {type: number}
+        pincode: {type: string}
+  sample:
+    applicant_id: A-1001
+    mobile: "9876543210"
+    product: loan
+    amount: 250000
+    pincode: "600001"
+  app:
+    name: tsi-cli-app
+
+bootstrap:
+  # ---- phase 1: every node comes up, gets an identity, and registers its peers
+  - id: setup
+    description: Initialise the node and create its administrator
+    path: /api/admin/registeradmin
+    body:
+      node_id: "{{.Node.id}}"
+      fqdn: "{{.Node.fqdn}}"
+      network_port: "{{.Node.port}}"
+      username: admin
+      email: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+      confirm: "{{.Admin.Password}}"
+      setup_token: "{{.Env.TSI_DX_NODE_BOOTSTRAP_TOKEN}}"
+    expect: [201]
+    already_done: [409]
+  - id: login
+    description: Log in as the administrator
+    path: /api/admin/login
+    body:
+      _func: admin_login
+      email: "{{.Admin.Email}}"
+      password: "{{.Admin.Password}}"
+    expect: [200]
+    capture: {token: token}
+    secret: [token]
+    volatile: true
+  - id: import_certificate
+    description: Activate the node's identity certificate
+    path: /api/admin/node
+    auth: bearer
+    body:
+      _func: import_node_certificate
+      certificate_pem: "{{.Identity.certificate_pem}}"
+      private_key_pem: "{{.Identity.private_key_pem}}"
+    expect: [200]
+  # Registering a peer again resets it to Pending, so look first and create only if absent.
+  - id: find_partner
+    description: Look for an existing registration of the peer
+    path: /api/admin/partners
+    auth: bearer
+    foreach: Peers
+    volatile: true
+    body: {_func: list_partners}
+    expect: [200]
+    select:
+      match: {node_id: "{{.Item.node_id}}"}
+      capture: {partner_id: partner_id}
+      optional: true
+  - id: create_partner
+    description: Register a peer node and its public key
+    path: /api/admin/partners
+    auth: bearer
+    foreach: Peers
+    unless: Vars.partner_id
+    body:
+      _func: create_partner
+      name: "{{.Item.node_id}}"
+      node_id: "{{.Item.node_id}}"
+      fqdn: "{{.Item.address}}"
+      public_key_pem: "{{.Item.certificate_pem}}"
+    expect: [200, 201]
+    capture: {partner_id: partner_id}
+  # ---- phase 2: the first node starts the handshake; both sides see the partner Active
+  - id: handshake
+    description: Start the partner handshake
+    phase: 2
+    when: Node.sender
+    path: /api/admin/partners
+    auth: bearer
+    body: {_func: accept_partnership, partner_id: "{{.Vars.partner_id}}"}
+    expect: [200]
+    already_done: [409]
+  - id: partner_active
+    description: Wait for the partner to become Active
+    phase: 2
+    path: /api/admin/partners
+    auth: bearer
+    foreach: Peers
+    poll: 60
+    body: {_func: list_partners}
+    expect: [200]
+    select:
+      match: {node_id: "{{.Item.node_id}}", status: Active}
+      capture: {partner_status: status}
+  # ---- phase 3: the receiving node defines a data contract and invites the sender
+  # A second contract with the same name would be created, so look first.
+  - id: find_own_contract
+    description: Look for an existing contract of this name
+    phase: 3
+    when: Node.receiver
+    volatile: true
+    path: /api/admin/contracts
+    auth: bearer
+    body: {_func: list_contracts}
+    expect: [200]
+    select:
+      match: {name: "{{.Spec.contract.name}}"}
+      capture: {contract_id: contract_id}
+      optional: true
+  - id: create_contract
+    description: Define a data contract
+    phase: 3
+    when: Node.receiver
+    unless: Vars.contract_id
+    path: /api/admin/contracts
+    auth: bearer
+    body:
+      _func: create_contract
+      name: "{{.Spec.contract.name}}"
+      description: "{{.Spec.contract.description}}"
+      interaction_type: async
+      schema_definition: "{{.Spec.contract.schema}}"
+      metadata:
+        format: json
+        governance_rules: "{{.Spec.contract.governance_rules}}"
+      retention_policy_days: "{{.Spec.contract.retention_days}}"
+      pii_fields: "{{.Spec.contract.pii_fields}}"
+    expect: [200, 201]
+    capture: {contract_id: contract_id}
+  - id: find_invitation
+    description: Check whether the peer is already invited
+    phase: 3
+    when: Node.receiver
+    volatile: true
+    path: /api/admin/contracts
+    auth: bearer
+    foreach: Peers
+    body: {_func: get_contract, contract_id: "{{.Vars.contract_id}}"}
+    expect: [200]
+    select:
+      from: participants
+      match: {node_id: "{{.Item.node_id}}"}
+      capture: {invited_node: node_id}
+      optional: true
+  - id: invite_node
+    description: Invite the sending node to the contract
+    phase: 3
+    when: Node.receiver
+    unless: Vars.invited_node
+    path: /api/admin/contracts
+    auth: bearer
+    foreach: Peers
+    body: {_func: invite_node, contract_id: "{{.Vars.contract_id}}", node_id: "{{.Item.node_id}}"}
+    expect: [200, 201]
+    already_done: [409]
+  # ---- phase 4: the sending node accepts
+  - id: find_contract
+    description: Find the contract the receiver shared
+    phase: 4
+    when: Node.sender
+    path: /api/admin/contracts
+    auth: bearer
+    poll: 60
+    body: {_func: list_contracts}
+    expect: [200]
+    select:
+      match: {name: "{{.Spec.contract.name}}"}
+      capture: {contract_id: contract_id}
+  - id: accept_contract
+    description: Accept the contract
+    phase: 4
+    when: Node.sender
+    path: /api/admin/contracts
+    auth: bearer
+    body: {_func: accept_contract, contract_id: "{{.Vars.contract_id}}"}
+    expect: [200]
+    already_done: [409]
+  - id: contract_active
+    description: Wait for the contract to become Active
+    phase: 4
+    when: Node.sender
+    path: /api/admin/contracts
+    auth: bearer
+    poll: 60
+    body: {_func: list_contracts}
+    expect: [200]
+    select:
+      match: {name: "{{.Spec.contract.name}}", status: Active}
+      capture: {contract_status: status}
+  # ---- phase 5: the sending node registers an application and issues it an API key
+  - id: create_app
+    description: Register the sending application
+    phase: 5
+    when: Node.sender
+    path: /api/admin/apps
+    auth: bearer
+    body:
+      _func: create_app
+      name: "{{.Spec.app.name}}"
+      description: Created by tsi-cli
+      authorized_contract_ids: ["{{.Vars.contract_id}}"]
+    expect: [200, 201]
+    capture: {app_id: id}
+  - id: generate_api_key
+    description: Issue the application an API key
+    phase: 5
+    when: Node.sender
+    path: /api/admin/apps
+    auth: bearer
+    body: {_func: generate_api_key, app_id: "{{.Vars.app_id}}"}
+    expect: [200, 201]
+    capture: {api_key: api_key, api_secret: api_secret}
+    secret: [api_secret]
+
+smoke:
+  - {id: ready, description: The node answers the readiness probe}
+  - {id: node_identity, description: The node reports its identity}
+  - {id: partner_active, description: The partner is Active}
+  - {id: contract_active, description: The contract is Active}
+  - {id: bad_key_refused, description: A wrong API secret is refused with 401}
+  - {id: async_transfer, description: A governed package is delivered to the receiving node}
