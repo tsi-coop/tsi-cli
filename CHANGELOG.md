@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- **A port conflict now names what holds the port.** When a host port is already in use by a Docker container, the error shows the container, its compose project and the directory it was started from, and suggests `docker stop` or `tsi compose down` there, instead of only saying the port is in use.
+
 ## v0.1.1
 
 ### Fixed

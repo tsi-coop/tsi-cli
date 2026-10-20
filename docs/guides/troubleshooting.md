@@ -11,7 +11,9 @@ Something on the machine already listens there, often a module running from its 
 - Check which port the run would use: `tsi compose up --plan`.
 - If the number is an upstream default (5432, 8080...), your `tsi.yaml` or binary predates the default offset of 300. Rebuild `tsi`, and make sure the `port_offset` line is there or absent (absent means 300). An explicit `port_offset: 0` means the upstream ports.
 - Pick another offset: `port_offset: 500` in `tsi.yaml`. See [Databases and ports](databases-and-ports.md#ports).
-- Find the process: `ss -ltnp | grep 5732`.
+- If a Docker container holds the port, the error names it, its compose project and the directory it was started from. Stop it with `docker stop <container>`, or run `tsi compose down` in that directory.
+- Find any other process: `ss -ltnp | grep 5732`.
+- To see which container publishes a port: `docker ps --filter publish=5732 --format '{{.Names}}  {{.Label "com.docker.compose.project"}}  {{.Label "com.docker.compose.project.working_dir"}}'`.
 
 ### `cannot reach the Docker daemon` / `docker is not installed`
 

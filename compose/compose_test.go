@@ -3,6 +3,8 @@ package compose
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -254,5 +256,47 @@ func TestDefaultProjectComesFromTheDirectory(t *testing.T) {
 	}
 	if s.Cfg.Project != "my-stack" {
 		t.Fatalf("project %q, want my-stack", s.Cfg.Project)
+	}
+}
+
+func TestPortConflictNamesTheContainerHoldingIt(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	port := ln.Addr().(*net.TCPAddr).Port
+
+	fake := &engine.Fake{Owners: map[int]string{port: "tsi-postgres-1 (project tsi, started from /home/me/old-stack)"}}
+	s := newStack(t, fake)
+	s.Cfg.PortOffset = 0
+	s.Cfg.Database.Port = port // the shared PostgreSQL would publish on the busy port
+
+	err = s.Up(context.Background())
+	var te *tsierr.Error
+	if !errors.As(err, &te) || te.Code != tsierr.CodePreflight {
+		t.Fatalf("want a preflight error, got %v", err)
+	}
+	if !strings.Contains(te.Msg, fmt.Sprintf("port %d is already in use by the container tsi-postgres-1", port)) ||
+		!strings.Contains(te.Msg, "/home/me/old-stack") {
+		t.Fatalf("the message must say which container holds the port: %q", te.Msg)
+	}
+	if !strings.Contains(te.Hint, "tsi compose down") {
+		t.Fatalf("hint: %q", te.Hint)
+	}
+	for _, c := range fake.Calls {
+		if strings.HasPrefix(c, "Pull") || strings.HasPrefix(c, "Up") {
+			t.Fatalf("nothing may start after a port conflict: %v", fake.Calls)
+		}
+	}
+
+	// A port held by something that is not a container still gets the generic advice.
+	fake2 := &engine.Fake{}
+	s2 := newStack(t, fake2)
+	s2.Cfg.PortOffset = 0
+	s2.Cfg.Database.Port = port
+	err = s2.Up(context.Background())
+	if !errors.As(err, &te) || strings.Contains(te.Msg, "container") || !strings.Contains(te.Hint, "port_offset") {
+		t.Fatalf("generic message expected: %v", err)
 	}
 }

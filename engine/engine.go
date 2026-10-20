@@ -42,6 +42,9 @@ type Engine interface {
 	Down(ctx context.Context, project Project, removeVolumes bool) error
 	PS(ctx context.Context, project Project) ([]Container, error)
 	Logs(ctx context.Context, project Project, w io.Writer, o LogOptions, services ...string) error
+	// PortOwner names the container publishing a host port ("" if none, or if it is not
+	// a container), to explain a port conflict.
+	PortOwner(ctx context.Context, port int) string
 	// ProjectDirs lists the working directories of the existing containers of a compose
 	// project, so a stack never takes over another directory's containers.
 	ProjectDirs(ctx context.Context, project string) ([]string, error)
@@ -207,6 +210,30 @@ func (d *Docker) Logs(ctx context.Context, p Project, w io.Writer, o LogOptions,
 		return err
 	}
 	return nil
+}
+
+// PortOwner returns "container (project name)" for the container publishing a host port.
+func (d *Docker) PortOwner(ctx context.Context, port int) string {
+	out, err := exec.CommandContext(ctx, "docker", "ps",
+		"--filter", fmt.Sprintf("publish=%d", port),
+		"--format", `{{.Names}}|{{.Label "com.docker.compose.project"}}|{{.Label "com.docker.compose.project.working_dir"}}`).Output()
+	if err != nil {
+		return ""
+	}
+	line := strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+	if line == "" {
+		return ""
+	}
+	f := strings.Split(line, "|")
+	desc := f[0]
+	if len(f) > 1 && f[1] != "" {
+		desc += " (project " + f[1]
+		if len(f) > 2 && f[2] != "" {
+			desc += ", started from " + f[2]
+		}
+		desc += ")"
+	}
+	return desc
 }
 
 // ProjectDirs reads the working directory Docker recorded on each container of a project.

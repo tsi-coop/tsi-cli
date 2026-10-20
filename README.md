@@ -1,10 +1,10 @@
-# tsi-cli
+# TSI CLI
 
-A CLI to pick, configure, and launch the data infrastructure primitives your stack needs.
+A CLI to pick, configure, and launch the tsi modules your stack needs.
 
 > **Status: soft launch.** Four modules are implemented and tested end to end against the real containers: `tsi-dpdp-cms`, `tsi-privacy-vault`, `tsi-compass` and `tsi-dx-node`. See [Modules](#modules).
 
-## Why tsi-cli
+## Why TSI CLI?
 
 Each TSI module (consent, privacy vault, compliance, data exchange) is set up by hand today: write an env file, mount its `db/` folder into Postgres, start it, open a browser console, create the first administrator, create an app, generate an API key, and copy a secret that is shown only once. Every module has slightly different steps, setup tokens and variable names.
 

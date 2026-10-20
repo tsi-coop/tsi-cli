@@ -9,6 +9,8 @@ import (
 
 // Fake records calls and returns canned state. For unit tests.
 type Fake struct {
+	// Owners maps a host port to the description PortOwner returns.
+	Owners map[int]string
 	// Dirs is what ProjectDirs returns.
 	Dirs       []string
 	mu         sync.Mutex
@@ -46,3 +48,5 @@ func (f *Fake) Digest(ctx context.Context, image string) (string, error) {
 func (f *Fake) ProjectDirs(ctx context.Context, project string) ([]string, error) {
 	return f.Dirs, f.rec("ProjectDirs")
 }
+
+func (f *Fake) PortOwner(ctx context.Context, port int) string { return f.Owners[port] }

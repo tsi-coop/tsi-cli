@@ -371,7 +371,7 @@ func (s *Stack) Up(ctx context.Context, opts ...UpOption) error {
 		return err
 	}
 	if len(running) == 0 {
-		if err := s.checkPorts(l); err != nil {
+		if err := s.checkPorts(ctx, l); err != nil {
 			return err
 		}
 	}
@@ -491,7 +491,7 @@ func (s *Stack) WaitReady(ctx context.Context, timeout time.Duration) error {
 }
 
 // checkPorts fails early, naming the module, when a host port is taken.
-func (s *Stack) checkPorts(l *render.Layout) error {
+func (s *Stack) checkPorts(ctx context.Context, l *render.Layout) error {
 	type pt struct {
 		name string
 		port int
@@ -511,8 +511,13 @@ func (s *Stack) checkPorts(l *render.Layout) error {
 	for _, p := range pts {
 		ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Cfg.Bind, p.port))
 		if err != nil {
-			return tsierr.New(tsierr.CodePreflight, p.name, "preflight", fmt.Sprintf("port %d is already in use", p.port),
-				"free the port, or set port_offset in tsi.yaml (for example `port_offset: 100`)", nil)
+			msg := fmt.Sprintf("port %d is already in use", p.port)
+			hint := "free the port, or set port_offset in tsi.yaml (for example `port_offset: 100`)"
+			if owner := s.Eng.PortOwner(ctx, p.port); owner != "" {
+				msg += " by the container " + owner
+				hint = "stop it (`docker stop` the container, or `tsi compose down` in the directory it was started from), or set port_offset in tsi.yaml (for example `port_offset: 100`)"
+			}
+			return tsierr.New(tsierr.CodePreflight, p.name, "preflight", msg, hint, nil)
 		}
 		ln.Close()
 	}
